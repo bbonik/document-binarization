@@ -35,5 +35,5 @@ The function should work directly "out of the box". Just pass an RGB or grayscal
 
 # Citation
 If you use this code in your research please cite the following paper:
-1. [Vonikakis, V., Andreadis, I., & Papamarkos, N. (2011). Robustdocument binarization with OFF center-surround cells. Pattern Analysis and Applications, 14(3), 219-234.](https://arxiv.org/abs/2103.02854)
+1. [Vonikakis, V., Andreadis, I., & Papamarkos, N. (2011). Robustdocument binarization with OFF center-surround cells. Pattern Analysis and Applications, 14(3), 219-234.](https://www.researchgate.net/publication/226333284_Robust_document_binarization_with_OFF_center-surround_cells)
 2. [Vonikakis, V., Andreadis, I., Papamarkos, N., & Gasteratos, A. (2007). Adaptive Document Binarization: AHuman Vision Approach. Int. Conference on Computer Vision Theory and Applications. (pp. 104-110). Barcelona, Spain.](https://www.researchgate.net/publication/221415249_Adaptive_document_binarization_A_human_vision_approach)
