@@ -9,9 +9,9 @@ The function should work directly "out of the box". Just pass an RGB or grayscal
 
 # Contents:
 ```tree
-├── source                                             [Directory: Source code]
-│   └── text_binarization.py                           [The main binarization function, along with example demonstrations] 
-└── data                                               [Directory: dataset. Test images and example]
+├── code                             [Directory: Source code]
+│   └── text_binarization.py         [The main binarization function, along with example demonstrations] 
+└── data                             [Directory: dataset. Test images and example]
 ```
 
 
