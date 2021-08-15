@@ -9,21 +9,9 @@ The function should work directly "out of the box". Just pass an RGB or grayscal
 
 # Contents:
 ```tree
-│   environment_requirements.txt                       [Environment file for the required version of libraries]
 ├── source                                             [Directory: Source code]
-│   ├── emotions_dlib.py                               [The main set of classes for emotion estimation, feature generation and landmark frontalization] 
-│   ├── Extract_features_and_train_model.ipynb         [Jupyter notebook demonstrating end-to-end data loading, feature generation, analysis and model training]
-│   ├── extract_features.py                            [Independent script for generating features]
-│   ├── train_emotions.py                              [Independent script for training emotion models, based on generated features]
-│   ├── example_test_emotions_singleimage.py           [Example of applying emotion estimation on faces from a single image]
-│   └── example_test_realtime_emotions.py              [Example of applying real-time emotion estimation on faces from a camera]
-├── models                                             [Directory: Models]
-│   ├── shape_predictor_68_face_landmarks.dat          [DLIB facial landmark model] 
-│   ├── model_frontalization.npy                       [Frontalization facial landmark model] 
-│   └── model_emotion_pls=30_fullfeatures=False.joblib [Emotion pretrained model]
-└── data                                               [Directory: dataset]
-    ├── Morphset.csv                                   [Dataset of anonymized facial landmarks with morphed expressions and emotion annotations]
-    └── images                                         [Directory: sample test images and examples]
+│   └── text_binarization.py                           [The main binarization function, along with example demonstrations] 
+└── data                                               [Directory: dataset. Test images and example]
 ```
 
 
