@@ -12,6 +12,7 @@ from skimage.filters import (gaussian, threshold_otsu, threshold_niblack,
                              threshold_sauvola)
 from skimage.color import rgb2gray
 from skimage import img_as_float
+from skimage.morphology import remove_small_objects
 
 
 
@@ -22,7 +23,8 @@ plt.close('all')
 def binarize_text(
         image_array, 
         sigma_surround=10, 
-        sigma_center=0.5, 
+        sigma_center=0.5,
+        remove_elements_smaller_than=10,  # pixels
         verbose=False
         ):
     '''
@@ -58,6 +60,11 @@ def binarize_text(
             details of the binary text characters. sigma_center and 
             sigma_surround should be selected with the size of the output text 
             in mind. 
+        remove_elements_smaller_than: int or None
+            If None, no denoising is applied. If int, all elements smaller 
+            than the number specified, are removed. E.g. if 
+            remove_elements_smaller_than=10 all elements smaller than 10 
+            pixels will be removed.
         verbose: Boolean
             Whether or not to show visualizations for intermediate stages of 
             the algorithm and comparisons with other basic binarization 
@@ -90,36 +97,58 @@ def binarize_text(
     # global threshold on the off center surround cell activations
     binary_off_cs_cells = off_cs_cells > threshold_otsu(off_cs_cells)
     
-    #TODO: add some morphological filtering for noise removal
+    # morphological filtering: removing elements with small number of pixels
+    if remove_elements_smaller_than is not None:
+        binary_off_cs_cells_denoise = ~remove_small_objects(
+            ar=~binary_off_cs_cells,  # black<->white
+            min_size=remove_elements_smaller_than, 
+            connectivity=1, 
+            in_place=False
+            )
+    else:
+        binary_off_cs_cells_denoise = binary_off_cs_cells
+    
     
     
     if verbose is True:
         
         # visualize processing stages
         plt.figure(figsize=(12,7))
-        plt.subplot(2,2,1)
+        plt.subplot(2,3,1)
+        plt.imshow(image, cmap='gray', vmin=0, vmax=1)
+        plt.axis(False)
+        plt.grid(False)
+        plt.title('Input image')
+        
+        plt.subplot(2,3,2)
         plt.imshow(surround, cmap='gray', vmin=0, vmax=1)
         plt.axis(False)
         plt.grid(False)
         plt.title('Surround')
         
-        plt.subplot(2,2,2)
+        plt.subplot(2,3,3)
         plt.imshow(center, cmap='gray', vmin=0, vmax=1)
         plt.axis(False)
         plt.grid(False)
         plt.title('Center')
         
-        plt.subplot(2,2,3)
+        plt.subplot(2,3,4)
         plt.imshow(off_cs_cells, cmap='gray', vmin=0, vmax=1)
         plt.axis(False)
         plt.grid(False)
         plt.title('OFF center-surround cells')
         
-        plt.subplot(2,2,4)
+        plt.subplot(2,3,5)
         plt.imshow(binary_off_cs_cells, cmap='gray', vmin=0, vmax=1)
         plt.axis(False)
         plt.grid(False)
-        plt.title('OFF center-surround local thresholding')
+        plt.title('OFF center-surround binary')
+        
+        plt.subplot(2,3,6)
+        plt.imshow(binary_off_cs_cells_denoise, cmap='gray', vmin=0, vmax=1)
+        plt.axis(False)
+        plt.grid(False)
+        plt.title('OFF center-surround denoised')
         
         plt.tight_layout()
         plt.show()
@@ -165,7 +194,7 @@ def binarize_text(
         plt.title('Sauvola local thresholding')
         
         plt.subplot(2,3,6)
-        plt.imshow(binary_off_cs_cells, cmap='gray', vmin=0, vmax=1)
+        plt.imshow(binary_off_cs_cells_denoise, cmap='gray', vmin=0, vmax=1)
         plt.axis(False)
         plt.grid(False)
         plt.title('OFF center-surround local thresholding')
@@ -175,7 +204,7 @@ def binarize_text(
         plt.show()
         
 
-    return binary_off_cs_cells
+    return binary_off_cs_cells_denoise
 
 
 
@@ -189,7 +218,11 @@ if __name__=="__main__":
     # filename = "../data/historical.jpg"
     
     image = imageio.imread(filename)
-    image_binary = binarize_text(image_array=image, verbose=True)
+    image_binary = binarize_text(
+        image_array=image, 
+        remove_elements_smaller_than=10,
+        verbose=True
+        )
     
 
     
