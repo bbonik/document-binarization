@@ -1,5 +1,5 @@
-# Document binarization with OFF center-surround cells of the Human Visual System
-Python function implementing a **text binarization function** based on activations of modeled **OFF center-surround cells** of the retina, which detect light decrements (text) on bright background (page). The approach is robust to strong illumination changes, like shadows or highlights, making it good for text images which have been caputred outdoors, perhaps with a mobile phone. 
+# Document binarization with OFF center-surround cells
+Python function implementing a **text binarization function** based on activations of modeled **OFF center-surround cells** of the Human Visual System, which detect light decrements (text) on bright background (page). The approach is robust to strong illumination changes, like shadows or highlights, making it good for text images which have been caputred outdoors, perhaps with a mobile phone. 
 
 ![example](data/example.png "example")
 
