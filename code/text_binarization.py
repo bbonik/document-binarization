@@ -20,10 +20,47 @@ plt.close('all')
 
 
 
+def get_off_center_surround(
+    # Generates the response of OFF center-surround cells, given the receptive
+    # field images of center and surround (modeled as gaussians).
+        center,
+        surround, 
+        invert=True,
+        min_max_norm = True
+        ):
+    
+    RANGE_MAX = 1
+    RANGE_MIN = 0
+
+    # off center-surround cell activations
+    off_cs_cells = surround - center
+    off_cs_cells[off_cs_cells<RANGE_MIN] = RANGE_MIN
+    off_cs_cells = (((RANGE_MAX + surround) * off_cs_cells) / 
+                    (surround + off_cs_cells))
+    
+    # truncate within limits
+    off_cs_cells[off_cs_cells<RANGE_MIN] = RANGE_MIN  
+    off_cs_cells[off_cs_cells>RANGE_MAX] = RANGE_MAX
+    
+    if invert is True:
+        off_cs_cells = RANGE_MAX - off_cs_cells  # invert for dark letters
+    
+    
+    if min_max_norm is True:
+        off_cs_cells = ((off_cs_cells - off_cs_cells.min()) / 
+                        (off_cs_cells.max() - off_cs_cells.min()))
+        
+    
+    return off_cs_cells
+    
+    
+    
+
+
 def binarize_text(
         image_array, 
-        sigma_surround=10, 
-        sigma_center=0.5,
+        center_surround_sigma,
+        boldness = 1.0,
         remove_elements_smaller_than=10,  # pixels
         verbose=False
         ):
@@ -49,17 +86,31 @@ def binarize_text(
         ------
         image_array: numpy array HxWx3 or HxW
             The numpy array of the input image. Either RGB or grayscale.
-        sigma_surround: float
-            The standard deviation of the gaussian filter which is used to
-            model the surround of the OFF center-surround cells.
-        sigma_center: float
-            The standard deviation of the gaussian filter which is used to
-            model the center of the OFF center-surround cells. sigma_center 
-            should be smaller than sigma_surround. Larger values minimize the
-            noise in the output binary image, but they may filter out small
-            details of the binary text characters. sigma_center and 
-            sigma_surround should be selected with the size of the output text 
-            in mind. 
+        center_surround_sigma: list of dictionaries
+            Each dictionary represents a spatial scale and needs to have 2
+            specific fields:
+                1. 'sigma_surround': the standard deviation of the gaussian 
+                    representing the surround of the OFF receptive field.
+                2. 'sigma_center' the standard deviation of the gaussian 
+                    representing the center of the OFF receptive field.
+            Both spatial scales depend on the resolution of text characters 
+            that need to be binarized. For higher resolution text, larger
+            sigmas will be needed. Center sigma usually needs to be small 
+            (e.g. 0.5 or 1). Larger center sigmas will not be affected by 
+            noise, but they will filter out fine details from the text. Smaller
+            center sigmas, will detect finer text details, but will also 
+            extract noise. The surround sigma needs to be larger than the
+            center, and helps to discount illumination or stain variations. 
+            You can include as many scales as you want, but usually 2 are
+            enough. 
+        boldness: float
+            Binarization parameter that controls how bold or thin the text 
+            characters will look. boldness=1.0 is the default. Values below
+            1.0 (say 0.95) will make the characters thinner, whereas values
+            above 1.0 (say 1.1) will make the text characters thicker. The
+            upper and lower values of this parameter depend on the image. If
+            the values are too large (e.g. 1.8) or too low (e.g. 0.3) then
+            the image will be either all black or all white.
         remove_elements_smaller_than: int or None
             If None, no denoising is applied. If int, all elements smaller 
             than the number specified, are removed. E.g. if 
@@ -82,20 +133,54 @@ def binarize_text(
         image = rgb2gray(image_array.copy())  # rgb-2-grayscale [0,255]->[0,1]
     else:
         image = img_as_float(image_array.copy())  # [0,255]->[0,1]
-     
-    # modelling center surround receptive fields as gaussians
-    surround = gaussian(image, sigma=sigma_surround, mode='reflect')
-    center = gaussian(image, sigma=sigma_center, mode='reflect')
+        
+        
 
-    # off center-surround cell activations
-    off_cs_cells = surround - center
-    off_cs_cells = ((1 + surround) * off_cs_cells) / (surround + off_cs_cells)
-    off_cs_cells[off_cs_cells<0] = 0  # truncate within limits
-    off_cs_cells[off_cs_cells>1] = 1
-    off_cs_cells = 1 - off_cs_cells  # invert for dark letters
+    
+    # generate lists of images of the centers, the surrounds and the 
+    # off-center-surround responses, the surrounds, based on the input scales
+    ls_off_cs_cells = []
+    ls_surrounds = []
+    ls_centers = []
+    for scale in center_surround_sigma:
+     
+        # modelling center surround receptive fields as gaussians
+        surround = gaussian(
+            image, 
+            sigma=scale['sigma_surround'], 
+            mode='reflect'
+            )
+        center = gaussian(
+            image, 
+            sigma=scale['sigma_center'], 
+            mode='reflect'
+            )
+        
+        # keep the images for later visualizations
+        ls_surrounds.append(surround)
+        ls_centers.append(center)
+
+        # off center-surround cell activations
+        ls_off_cs_cells.append(
+            get_off_center_surround(
+            center=center, 
+            surround=surround, 
+            invert=True,
+            min_max_norm=False
+            )
+        )
+
+    # combine all the off-center-surround response images
+    off_cs_cells = ls_off_cs_cells[0].copy()
+    for i in range(1, len(ls_off_cs_cells)):
+        off_cs_cells += ls_off_cs_cells[i]
+    
+    # min-max normalization to bring back values to [0,1] and supress noise
+    off_cs_cells = ((off_cs_cells - off_cs_cells.min()) / 
+                    (off_cs_cells.max() - off_cs_cells.min()))
     
     # global threshold on the off center surround cell activations
-    binary_off_cs_cells = off_cs_cells > threshold_otsu(off_cs_cells)
+    binary_off_cs_cells = off_cs_cells > threshold_otsu(off_cs_cells) * boldness
     
     # morphological filtering: removing elements with small number of pixels
     if remove_elements_smaller_than is not None:
@@ -111,40 +196,74 @@ def binarize_text(
     
     
     if verbose is True:
+
+        total_scales = len(ls_off_cs_cells)
+        
+        # visualize receptive fields and off responses
+        plt.figure(figsize=(12,7))
+        for i in range(total_scales):
+            plt.subplot(3,total_scales,i+1)
+            plt.imshow(ls_surrounds[i], cmap='gray', vmin=0, vmax=1)
+            plt.axis(False)
+            plt.grid(False)
+            plt.title('Surround ' + str(i+1))
+            
+            plt.subplot(3,total_scales,i+total_scales+1)
+            plt.imshow(ls_centers[i], cmap='gray', vmin=0, vmax=1)
+            plt.axis(False)
+            plt.grid(False)
+            plt.title('Center ' + str(i+1))
+            
+            plt.subplot(3,total_scales,i+2*total_scales+1)
+            plt.imshow(ls_off_cs_cells[i], cmap='gray', vmin=0, vmax=1)
+            plt.axis(False)
+            plt.grid(False)
+            plt.title('OFF center-surround ' + str(i+1))
+        plt.tight_layout()
+        plt.show()
+        
+        # visualize off responses and their combination
+        plt.figure(figsize=(12,7))
+        for i in range(total_scales):            
+            plt.subplot(1,total_scales+1,i+1)
+            plt.imshow(ls_off_cs_cells[i], cmap='gray', vmin=0, vmax=1)
+            plt.axis(False)
+            plt.grid(False)
+            plt.title('OFF center-surround ' + str(i+1))
+        plt.tight_layout()
+        plt.show()
+        
+        plt.subplot(1,total_scales+1,total_scales+1)
+        plt.imshow(off_cs_cells, cmap='gray', vmin=0, vmax=1)
+        plt.axis(False)
+        plt.grid(False)
+        plt.title('OFF combined')
+        
+        plt.suptitle('Comparison of OFF c-s responses')
+        plt.tight_layout()
+        plt.show()
         
         # visualize processing stages
         plt.figure(figsize=(12,7))
-        plt.subplot(2,3,1)
+        plt.subplot(2,2,1)
         plt.imshow(image, cmap='gray', vmin=0, vmax=1)
         plt.axis(False)
         plt.grid(False)
         plt.title('Input image')
         
-        plt.subplot(2,3,2)
-        plt.imshow(surround, cmap='gray', vmin=0, vmax=1)
-        plt.axis(False)
-        plt.grid(False)
-        plt.title('Surround')
-        
-        plt.subplot(2,3,3)
-        plt.imshow(center, cmap='gray', vmin=0, vmax=1)
-        plt.axis(False)
-        plt.grid(False)
-        plt.title('Center')
-        
-        plt.subplot(2,3,4)
+        plt.subplot(2,2,2)
         plt.imshow(off_cs_cells, cmap='gray', vmin=0, vmax=1)
         plt.axis(False)
         plt.grid(False)
         plt.title('OFF center-surround cells')
         
-        plt.subplot(2,3,5)
+        plt.subplot(2,2,3)
         plt.imshow(binary_off_cs_cells, cmap='gray', vmin=0, vmax=1)
         plt.axis(False)
         plt.grid(False)
         plt.title('OFF center-surround binary')
         
-        plt.subplot(2,3,6)
+        plt.subplot(2,2,4)
         plt.imshow(binary_off_cs_cells_denoise, cmap='gray', vmin=0, vmax=1)
         plt.axis(False)
         plt.grid(False)
@@ -217,9 +336,18 @@ if __name__=="__main__":
     # filename = "../data/shadow2.jpg"
     # filename = "../data/historical.jpg"
     
-    image = imageio.imread(filename)
+    
+    # setting spatial scales. You can add more if you need
+    scale_mid = {'sigma_surround': 30, 'sigma_center': 1}
+    scale_fine = {'sigma_surround': 10, 'sigma_center': 0.5}
+    
+    image = imageio.imread(filename)  # load image
+    
     image_binary = binarize_text(
         image_array=image, 
+        center_surround_sigma = [scale_fine, scale_mid], # for more scales
+        # center_surround_sigma = [scale_fine],  # for single scale
+        boldness = 0.9,
         remove_elements_smaller_than=10,
         verbose=True
         )
