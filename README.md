@@ -1,7 +1,10 @@
 # Document binarization with OFF center-surround cells
 Python function implementing a **text binarization function** based on activations of modeled **OFF center-surround cells** of the Human Visual System, which detect light decrements (text) on bright background (page). The approach is robust to strong illumination changes, like shadows or highlights, making it good for text images which have been captured outdoors, perhaps with a mobile phone. 
 
+## Example of a document with a stain
 ![example1](data/example1.png "example1")
+
+## Example of a document with a strong shadow, captured with a mobile phone
 ![example2](data/example2.png "example2")
 
 # Usage
